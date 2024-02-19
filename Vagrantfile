@@ -12,7 +12,7 @@ Vagrant.configure("2") do |config|
 
   # Every Vagrant development environment requires a box. You can search for
   # boxes at https://vagrantcloud.com/search.
-  config.vm.box = "generic/debian12"
+  # config.vm.box = "generic/debian12"
 
   # Disable automatic box update checking. If you disable this, then
   # boxes will only be checked for updates when the user runs
@@ -32,7 +32,7 @@ Vagrant.configure("2") do |config|
 
   # Create a private network, which allows host-only access to the machine
   # using a specific IP.
-  config.vm.network "private_network", type: "dhcp"
+  # config.vm.network "private_network", type: "dhcp"
 
   # Create a public network, which generally matched to bridged network.
   # Bridged networks make the machine appear as another physical device on
@@ -74,4 +74,91 @@ Vagrant.configure("2") do |config|
   #   apt update
   #   apt install -y nginx
   # SHELL
+
+  #cria a vm controle com debian12, 2G de ram, 2 cpus, uma interface hot-only e executa o script update.sh 
+  config.vm.define "controle" do |controle|
+    controle.vm.box = "generic/debian12"
+    controle.vm.network "private_network", ip: "172.17.177.100"
+    controle.vm.hostname = "controle"
+    controle.vm.provider "virtualbox" do |vb|
+      vb.name = "controle" #nome no virtualbox
+      vb.memory = "2048"
+      vb.cpus = 2
+    end
+    controle.vm.provision "shell", path: "scripts/update.sh"
+    config.vm.synced_folder ".", "/vagrant", disabled: false
+  end
+
+  #cria a vm web com debian12, 512MB de ram, 1 cpu, uma interface hot-only e executa o script update.sh  
+  config.vm.define "web" do |web|
+    web.vm.box = "generic/debian12"
+    web.vm.network "private_network", ip: "172.17.177.101"
+    web.vm.hostname = "web"
+    web.vm.provider "virtualbox" do |vb|
+      vb.name = "web"
+      vb.memory = "512"
+      vb.cpus = 1
+    end
+    web.vm.provision "shell", path: "scripts/update.sh"
+    web.vm.synced_folder ".", "/vagrant", disabled: false
+  end
+
+  #cria a vm db com debian12, 512MB de ram, 1 cpu, uma interface hot-only e executa o script update.sh  
+  config.vm.define "db" do |db|
+    db.vm.box = "generic/debian12"
+    db.vm.network "private_network", ip: "172.17.177.102"
+    db.vm.hostname = "db"
+    db.vm.provider "virtualbox" do |vb|
+      vb.name = "db"
+      vb.memory = "512"
+      vb.cpus = 1
+    end
+    db.vm.provision "shell", path: "scripts/update.sh"
+    db.vm.synced_folder ".", "/vagrant", disabled: false
+  end
+
+
+  #cria a vm master com centos7, 2GB de ram, 2 cpus e uma interface hot-only  
+  config.vm.define "master" do |master|
+    master.vm.box = "geerlingguy/centos7"
+    master.vm.network "private_network", ip: "172.17.177.110"
+    master.vm.hostname = "master"
+    master.vm.provider "virtualbox" do |vb|
+      vb.name = "master"
+      vb.memory = "2048"
+      vb.cpus = "2"
+    end
+    master.vm.synced_folder ".", "/vagrant", disable: false
+  end
+
+  #cria as vms node1, node2 e node3 com centos7, 512MB de ram, 1 cpu, uma interface hot-only e adiciona no grupo nodes  
+  (1..3).each do |i|
+    config.vm.define "node#{i}" do |node|
+      node.vm.box = "geerlingguy/centos7"
+      node.vm.network "private_network", ip: "172.17.177.11#{i}"
+      node.vm.hostname = "node#{i}"
+      node.vm.provider "virtualbox" do |vb|
+        vb.name = "node#{i}"
+        vb.memory = "512"
+        vb.cpus = 1
+      end
+    end
+    config.group.groups = {
+      "nodes" => [
+        "node#{i}"
+        ]
+    }
+  end
+
+  # cria o grupo controle com a vm controle e o grupo clientes com as vms web e db
+  config.group.groups = {
+  "controle" => [
+    "controle",
+  ],
+  "clientes" => [
+    "web",
+    "db",
+  ],
+}
+
 end
